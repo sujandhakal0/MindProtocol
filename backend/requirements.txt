@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+supabase
+groq
+langchain
+huggingface_hub
+python-dotenv
+pydantic
+numpy
