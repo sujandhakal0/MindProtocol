@@ -75,7 +75,11 @@ async def register(body: RegisterRequest, db=Depends(get_db)) -> AuthResponse:
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        err = str(e)
+        # Surface misconfiguration errors clearly — these need immediate developer action
+        if "service_role" in err or "misconfiguration" in err.lower():
+            raise HTTPException(status_code=500, detail=err)
+        raise HTTPException(status_code=503, detail=err)
 
 
 # ── Public: Login ─────────────────────────────────────────────────────────────
@@ -107,6 +111,11 @@ async def login(body: LoginRequest, db=Depends(get_db)) -> AuthResponse:
             token_type=tokens.token_type,
             expires_in=tokens.expires_in,
         )
+    except RuntimeError as e:
+        err = str(e)
+        if "service_role" in err or "misconfiguration" in err.lower():
+            raise HTTPException(status_code=500, detail=err)
+        raise HTTPException(status_code=503, detail=err)
     except ValueError as e:
         # Always return the same message to prevent email enumeration attacks
         raise HTTPException(status_code=401, detail="Invalid email or password.")
