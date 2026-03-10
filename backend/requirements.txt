@@ -1,9 +1,31 @@
-fastapi
-uvicorn
-supabase
-groq
-langchain
-huggingface_hub
-python-dotenv
-pydantic
-numpy
+# Web framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+
+# Database
+supabase==2.7.4
+pgvector==0.3.2
+
+# AI / LLM
+groq==0.11.0
+langchain==0.3.1
+langchain-core==0.3.6
+langchain-community==0.3.1
+
+# Embeddings
+huggingface-hub==0.25.1
+httpx==0.27.2
+
+# Auth — JWT verification
+PyJWT==2.9.0
+
+# Email validation (used by Pydantic EmailStr)
+email-validator==2.2.0
+
+# Config & validation
+pydantic==2.9.2
+pydantic-settings==2.5.2
+python-dotenv==1.0.1
+
+# Utilities
+tenacity==8.1.0

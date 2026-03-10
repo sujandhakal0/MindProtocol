@@ -5,8 +5,9 @@ from app.models.request_models import MorningCheckinRequest
 from app.models.response_models import MorningCheckinResponse
 from app.services.classification_service import classify_mental_state
 from app.services.ai_service import generate_evening_questions
+from app.services.auth_service import AuthenticatedUser
 from app.db.repositories import SessionRepository
-from app.dependencies import get_db
+from app.dependencies import get_db, get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -15,14 +16,21 @@ router = APIRouter()
 @router.post("/morning-checkin", response_model=MorningCheckinResponse)
 async def morning_checkin(
     body: MorningCheckinRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),  # ← auth gate
     db=Depends(get_db),
 ) -> MorningCheckinResponse:
     """
-    Process morning brain scan:
+    Process morning brain scan.
+
+    Authentication: Required — include Authorization: Bearer <token> header.
+    The user_id is taken from the verified JWT, NOT from the request body.
+
+    Steps:
     1. Classify mental state from slider scores
-    2. Persist session to database
+    2. Persist session to database (linked to the verified user)
     3. Generate personalised evening reflection questions
     """
+    user_id = current_user.user_id  # Verified identity — cannot be faked
 
     # Step 1: Classify mental state
     state_flag = classify_mental_state(
@@ -31,13 +39,13 @@ async def morning_checkin(
         stress_score=body.stress_score,
         exercise=body.exercise,
     )
-    logger.info(f"User {body.user_id} → state: {state_flag}")
+    logger.info(f"User {user_id} → state: {state_flag}")
 
     # Step 2: Persist session
     session_repo = SessionRepository(db)
     try:
         session = session_repo.create_session(
-            user_id=str(body.user_id),
+            user_id=user_id,
             sleep_score=body.sleep_score,
             mood_score=body.mood_score,
             stress_score=body.stress_score,
