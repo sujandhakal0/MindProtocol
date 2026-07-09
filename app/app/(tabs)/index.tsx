@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Image } from 'react-native';
 import { router } from 'expo-router';
 import { getStreak, getTodaySession } from '../../lib/db';
 import { COLORS, SPACING, RADIUS } from '../../constants/theme';
@@ -22,9 +22,8 @@ export default function HomeTab() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.logoRow}>
-          <View style={styles.logoDot} />
-          <Text style={styles.appName}>MindProtocol</Text>
+        <View style={styles.logoContainer}>
+          <Image source={require('../../assets/logo.jpeg')} style={styles.logo} resizeMode="cover" />
         </View>
       </View>
 
@@ -73,16 +72,14 @@ const styles = StyleSheet.create({
 
   header: {
     marginBottom: SPACING.xl,
+    paddingLeft: 8,
   },
-  logoRow: {
-    flexDirection: 'row', alignItems: 'center',
+  logoContainer: {
+    width: 52, height: 52, borderRadius: 26, overflow: 'hidden',
+    backgroundColor: COLORS.bgCard,
   },
-  logoDot: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: COLORS.accent, marginRight: 8,
-  },
-  appName: {
-    color: COLORS.accent, fontSize: 14, fontWeight: '600', letterSpacing: 1.2,
+  logo: {
+    width: 52, height: 52,
   },
 
   centerContent: {

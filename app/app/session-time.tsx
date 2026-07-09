@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Platform
+  View, Text, StyleSheet, TouchableOpacity, Platform, Image
 } from 'react-native';
 import { router } from 'expo-router';
 import { updateSessionTime } from '../lib/db';
@@ -33,7 +33,9 @@ export default function SessionTime() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.logoDot} />
+        <View style={styles.logoContainer}>
+          <Image source={require('../assets/logo.jpeg')} style={styles.logo} resizeMode="cover" />
+        </View>
         <Text style={styles.step}>STEP 2 OF 2</Text>
       </View>
 
@@ -103,7 +105,11 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.lg },
-  logoDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.accent, marginRight: 8 },
+  logoContainer: {
+    width: 32, height: 32, borderRadius: 16, overflow: 'hidden',
+    backgroundColor: COLORS.bgCard, marginRight: 8,
+  },
+  logo: { width: 32, height: 32 },
   step: { fontSize: 11, fontWeight: '600', color: COLORS.textMuted, letterSpacing: 1.5 },
 
   title: { fontSize: 30, fontWeight: '700', color: COLORS.textPrimary, lineHeight: 38, marginBottom: SPACING.sm },

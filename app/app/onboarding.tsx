@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Image
 } from 'react-native';
 import { router } from 'expo-router';
 import { saveUserProfile } from '../lib/db';
@@ -145,9 +145,8 @@ export default function Onboarding() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
-        <View style={styles.logoRow}>
-          <View style={styles.logoDot} />
-          <Text style={styles.logoText}>MindProtocol</Text>
+        <View style={styles.logoContainer}>
+          <Image source={require('../assets/logo.jpeg')} style={styles.logo} resizeMode="cover" />
         </View>
         {renderProgressDots()}
       </View>
@@ -195,12 +194,11 @@ const styles = StyleSheet.create({
   },
 
   header: { marginBottom: SPACING.xl },
-  logoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.lg },
-  logoDot: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: COLORS.accent, marginRight: 8,
+  logoContainer: {
+    width: 40, height: 40, borderRadius: 20, overflow: 'hidden',
+    backgroundColor: COLORS.bgCard, marginBottom: SPACING.md,
   },
-  logoText: { color: COLORS.accent, fontSize: 14, fontWeight: '600', letterSpacing: 1.2 },
+  logo: { width: 40, height: 40 },
 
   dotsRow: {
     flexDirection: 'row',
