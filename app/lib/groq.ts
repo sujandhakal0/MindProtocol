@@ -40,13 +40,13 @@ const FEW_SHOT_MESSAGES = [
     content: `Onboarding: age_range=18-22, role=student, gender=male
 Sliders: mood=40%, mental_noise=75%, focus=45%, energy=50%
 Conversation Transcript:
-AI: What's the main thing on your mind right now?
+AI: What's on your mind right now?
 User: can't stop thinking about a comment my professor made
-AI: How would you describe your emotional state in 3 words?
+AI: What three words describe how you feel right now?
 User: embarrassed, replaying, stuck
 AI: Where in your body do you feel this most?
 User: my chest feels tight, like pressure
-AI: If this feeling had a message for you, what would it be?
+AI: If this feeling could talk, what would it be trying to tell you?
 User: that I'm not good enough`,
   },
   {
@@ -58,13 +58,13 @@ User: that I'm not good enough`,
     content: `Onboarding: age_range=27-35, role=professional, gender=female
 Sliders: mood=25%, mental_noise=55%, focus=40%, energy=20%
 Conversation Transcript:
-AI: What's the main thing on your mind right now?
+AI: What's on your mind right now?
 User: I keep messing up at work
-AI: How would you describe your emotional state in 3 words?
+AI: What three words describe how you feel right now?
 User: ashamed, tired, annoyed at myself
 AI: Where in your body do you feel this most?
 User: shoulders, constantly tense
-AI: If this feeling had a message for you, what would it be?
+AI: If this feeling could talk, what would it be trying to tell you?
 User: that I should be better by now`,
   },
   {
@@ -76,13 +76,13 @@ User: that I should be better by now`,
     content: `Onboarding: age_range=22-27, role=student, gender=non-binary
 Sliders: mood=30%, mental_noise=40%, focus=25%, energy=20%
 Conversation Transcript:
-AI: What's the main thing on your mind right now?
+AI: What's on your mind right now?
 User: nothing specific, just kind of numb
-AI: How would you describe your emotional state in 3 words?
+AI: What three words describe how you feel right now?
 User: flat, tired, blank
 AI: Where in your body do you feel this most?
 User: everywhere and nowhere at the same time
-AI: If this feeling had a message for you, what would it be?
+AI: If this feeling could talk, what would it be trying to tell you?
 User: I don't know, just tired of everything`,
   },
   {
@@ -236,33 +236,33 @@ function parsePromptsArray(text: string): string[] {
   return [];
 }
 
-const FOLLOW_UP_SYSTEM_PROMPT = `You are MindProtocol's journaling guide. You generate ONE follow-up question for a user who is in the middle of a progressive deepening journaling session.
+const FOLLOW_UP_SYSTEM_PROMPT = `You are MindProtocol's journaling guide. You generate ONE follow-up question for a user who is journaling through a progressive deepening session.
 
-The session has 4 phases. After the user writes freely following each question, you generate the NEXT question that goes deeper.
+The session has 4 steps. After the user writes freely for each step, you generate the NEXT question that helps them go deeper.
 
 ## RULES
-- Output ONLY the question. No headers, no explanation.
-- Maximum 25 words.
-- Never ask "why" — it triggers defensiveness.
-- Never give advice or suggest silver linings.
-- Use the user's own words from their previous writing where possible.
-- Push for precision: if they said "bad," push for the exact flavor.
-- Keep the tone warm, plain-spoken, present tense.
-- The question must require genuine reflection (not yes/no).
+- Output ONLY the question. Nothing else.
+- Keep it under 20 words. Simple words only — no therapy jargon.
+- Never ask "why" — it makes people defensive.
+- Never give advice or try to make them feel better.
+- Use their own words from their previous writing where you can.
+- If they said "bad," ask them to get more specific — what kind of bad?
+- Write like a warm, curious friend — not a therapist or coach.
+- The question must make them think, not just answer yes or no.
 
 ## PHASES (in order)
-1. surface → naming: Push for precise emotional vocabulary
-2. naming → examining: Go deeper — choose the MOST relevant angle based on what they shared:
-   - If they described a physical sensation or body feeling → ask about the body ("Where do you feel this most?")
-   - If they described a thought loop or mental pattern → ask about the pattern ("What keeps pulling you back to this?")
-   - If they described a specific event or person → ask about meaning ("What does this situation mean to you right now?")
-   - If they described numbness or disconnection → ask about what's underneath ("If the numbness wasn't there, what would be?")
-   - Pick the ONE question that goes deepest for THIS person. Never default to body scan if it doesn't fit.
-3. examining → deepening: What does this feeling mean? What is it trying to tell them?
-4. deepening → final: What is one small thing within their control right now?
+1. surface → naming: Help them find the right word for what they feel
+2. naming → examining: Go deeper — pick what fits best:
+   - If they talked about a body feeling → ask where they feel it
+   - If they talked about a thought loop → ask what keeps pulling them back
+   - If they talked about a specific event → ask what it means to them
+   - If they felt numb → ask what might be hiding underneath
+   - Pick the ONE question that fits THIS person best. Don't always ask about the body.
+3. examining → deepening: What is this feeling trying to tell them?
+4. deepening → final: What is one small thing they can actually do about this?
 
 ## SAFETY
-Only trigger crisis protocol if the user's writing contains EXPLICIT suicidal ideation, self-harm intent, or permanent hopelessness ("nothing will ever change," "no point going on"). Normal emotions like sadness, loneliness, anxiety, tiredness, or frustration are NOT crisis-level. When in doubt, do NOT trigger — output a normal follow-up question instead. Remember: "lonely," "sad," "stressed," "tired" are normal human experiences, not crises.`;
+Only trigger crisis if the writing clearly mentions wanting to die, self-harm, or hurting others. Normal feelings like sad, lonely, stressed, tired, or frustrated are NOT crises. When unsure, do NOT trigger — just ask a normal follow-up question.`;
 
 export async function generateFollowUpQuestion(
   conversationHistory: { role: 'ai' | 'user'; text: string }[],
