@@ -78,9 +78,9 @@ export default function SessionTab() {
 
   const {
     preSliders, postSliders, conversation, journalEntries, currentQuestionIndex,
-    generatedPrompt, journalText, sessionReflection, sessionId,
+    generatedPrompts, currentPromptIndex, journalText, sessionReflection, sessionId,
     setPreSliders, setPostSliders, appendMessage, addJournalEntry,
-    setCurrentQuestionIndex, setGeneratedPrompt, setJournalText,
+    setCurrentQuestionIndex, setGeneratedPrompts, advancePrompt, setJournalText,
     setSessionReflection, setSessionId, resetSession
   } = useSessionStore();
   const { ageRange, role, gender } = useUserStore();
@@ -241,8 +241,8 @@ export default function SessionTab() {
         appendMessage({ role: 'ai', text: followUp.text });
       }
 
-      const journalingPrompt = promptResult.type === 'prompt' ? promptResult.text : '';
-      setGeneratedPrompt(journalingPrompt);
+      const prompts = promptResult.type === 'prompts' ? promptResult.prompts : [];
+      setGeneratedPrompts(prompts.length > 0 ? prompts : ['Write freely for the next few minutes.']);
 
       setCurrentQuestionIndex(nextIndex);
       setStep('journaling');
@@ -284,23 +284,30 @@ export default function SessionTab() {
       return;
     }
 
+    const currentPrompt = generatedPrompts[currentPromptIndex] || 'Free journaling';
     addJournalEntry({
-      questionIndex: currentQuestionIndex,
+      questionIndex: currentPromptIndex,
       phase: 'journaling',
-      question: generatedPrompt || 'Free journaling',
+      question: currentPrompt,
       response: text,
       timestamp: Date.now(),
     });
+
+    // Advance to next prompt if there is one
+    if (currentPromptIndex < generatedPrompts.length - 1) {
+      advancePrompt();
+    }
   }
 
   async function handleJournalingDone() {
     setIsSaving(true);
 
     if (inputText.trim()) {
+      const currentPrompt = generatedPrompts[currentPromptIndex] || 'Free journaling';
       addJournalEntry({
-        questionIndex: currentQuestionIndex,
+        questionIndex: currentPromptIndex,
         phase: 'journaling',
-        question: generatedPrompt || 'Free journaling',
+        question: currentPrompt,
         response: inputText.trim(),
         timestamp: Date.now(),
       });
@@ -315,7 +322,7 @@ export default function SessionTab() {
 
     if (sessionId) {
       await saveDiagnosticTranscript(sessionId, transcript);
-      await saveGeneratedPrompt(sessionId, generatedPrompt || allText.substring(0, 500));
+      await saveGeneratedPrompt(sessionId, generatedPrompts.join('\n\n---\n\n'));
       await saveJournalText(sessionId, allText);
     }
 
@@ -477,10 +484,12 @@ export default function SessionTab() {
 
   // ─── JOURNALING (70% phase) ────────────────────────────────────────────────
   if (step === 'journaling') {
-    const activePrompt = generatedPrompt || 'Write freely for the next few minutes. There are no wrong answers — just write whatever comes up for you.';
+    const activePrompt = generatedPrompts[currentPromptIndex] || 'Write freely for the next few minutes. There are no wrong answers — just write whatever comes up for you.';
+    const totalPrompts = generatedPrompts.length;
     const mins = Math.floor(elapsedSeconds / 60);
     const secs = elapsedSeconds % 60;
     const atFifteen = elapsedSeconds >= 15 * 60;
+    const isLastPrompt = currentPromptIndex >= totalPrompts - 1;
 
     return (
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: COLORS.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -509,23 +518,48 @@ export default function SessionTab() {
           contentContainerStyle={ss.chatContent}
           onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
         >
+          {/* Prompt progression dots */}
+          {totalPrompts > 1 && (
+            <View style={ss.promptProgressRow}>
+              {generatedPrompts.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    ss.promptProgressDot,
+                    i < currentPromptIndex && ss.promptProgressDotActive,
+                    i === currentPromptIndex && ss.promptProgressDotCurrent,
+                  ]}
+                />
+              ))}
+              <Text style={ss.progressLabel}>
+                {currentPromptIndex + 1} of {totalPrompts}
+              </Text>
+            </View>
+          )}
+
           {/* Personalized prompt — serif-like style */}
           <View style={ss.promptPinned}>
-            <Text style={ss.promptLabel}>Your prompt:</Text>
+            <Text style={ss.promptLabel}>
+              {isLastPrompt ? 'Final prompt:' : `Prompt ${currentPromptIndex + 1}:`}
+            </Text>
             <Text style={ss.promptText}>{activePrompt}</Text>
           </View>
 
           {/* Instruction */}
           <Text style={ss.journalHint}>
-            Write as much or as little as you want. Press the arrow to save each chunk, or press Done when finished.
+            {isLastPrompt
+              ? 'This is your last prompt. Write freely, then press Done when finished.'
+              : 'Write as much as you want. Press the arrow to save and move to the next prompt, or press Done anytime.'}
           </Text>
 
-          {/* Journal entries written so far */}
-          {journalEntries.filter(e => e.phase === 'journaling').map((entry, i) => (
-            <View key={i} style={[ss.bubble, ss.bubbleUser, { alignSelf: 'stretch' }]}>
-              <Text style={ss.bubbleText}>{entry.response}</Text>
-            </View>
-          ))}
+          {/* Journal entries written so far — only for current prompt */}
+          {journalEntries
+            .filter(e => e.phase === 'journaling' && e.question === generatedPrompts[currentPromptIndex])
+            .map((entry, i) => (
+              <View key={i} style={[ss.bubble, ss.bubbleUser, { alignSelf: 'stretch' }]}>
+                <Text style={ss.bubbleText}>{entry.response}</Text>
+              </View>
+            ))}
 
           {isTyping && (
             <View style={[ss.bubble, ss.bubbleAi, ss.typingBubble]}>
@@ -539,30 +573,45 @@ export default function SessionTab() {
             <Text style={ss.voiceErrorText}>{voiceError}</Text>
           </View>
         )}
-        <View style={ss.chatInputContainer}>
-          <TouchableOpacity
-            style={[ss.micBtn, isRecording && ss.micBtnActive]}
-            onPress={isRecording ? stopRecording : startRecording}
-          >
-            <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={22} color={isRecording ? '#fff' : COLORS.textSecondary} />
-          </TouchableOpacity>
-          <TextInput
-            style={ss.chatInput}
-            placeholder={isRecording ? 'Listening...' : 'Write freely here...'}
-            placeholderTextColor={COLORS.textMuted}
-            value={isRecording ? (partialResult || inputText) : inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={2000}
-          />
-          <TouchableOpacity
-            style={[ss.sendBtn, !inputText.trim() && { opacity: 0.5 }]}
-            onPress={handleJournalingSend}
-            disabled={!inputText.trim() || isTyping}
-          >
-            <Text style={ss.sendIcon}>↑</Text>
-          </TouchableOpacity>
-        </View>
+
+        {/* After final prompt: show Done button instead of input */}
+        {isLastPrompt && journalEntries.some(e => e.phase === 'journaling' && e.question === generatedPrompts[currentPromptIndex]) ? (
+          <View style={ss.finalDoneContainer}>
+            <TouchableOpacity
+              style={[ss.finalDoneBtn, isSaving && { opacity: 0.5 }]}
+              onPress={handleJournalingDone}
+              disabled={isSaving}
+            >
+              <Text style={ss.finalDoneBtnText}>{isSaving ? 'Saving...' : 'Done writing'}</Text>
+              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={ss.chatInputContainer}>
+            <TouchableOpacity
+              style={[ss.micBtn, isRecording && ss.micBtnActive]}
+              onPress={isRecording ? stopRecording : startRecording}
+            >
+              <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={22} color={isRecording ? '#fff' : COLORS.textSecondary} />
+            </TouchableOpacity>
+            <TextInput
+              style={ss.chatInput}
+              placeholder={isRecording ? 'Listening...' : 'Write freely here...'}
+              placeholderTextColor={COLORS.textMuted}
+              value={isRecording ? (partialResult || inputText) : inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={2000}
+            />
+            <TouchableOpacity
+              style={[ss.sendBtn, !inputText.trim() && { opacity: 0.5 }]}
+              onPress={handleJournalingSend}
+              disabled={!inputText.trim() || isTyping}
+            >
+              <Text style={ss.sendIcon}>↑</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
     );
   }
@@ -689,6 +738,20 @@ const ss = StyleSheet.create({
   },
   doneBtnText: { fontSize: 13, fontWeight: '600', color: COLORS.textPrimary },
 
+  // Final Done button (bottom of screen after last prompt)
+  finalDoneContainer: {
+    paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md,
+    paddingBottom: SPACING.xl, backgroundColor: COLORS.bg,
+  },
+  finalDoneBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 16, borderRadius: RADIUS.md,
+    backgroundColor: COLORS.accent,
+  },
+  finalDoneBtnText: {
+    fontSize: 16, fontWeight: '700', color: '#fff',
+  },
+
   // Progress dots
   dotsContainer: {
     flexDirection: 'row', justifyContent: 'center',
@@ -710,9 +773,22 @@ const ss = StyleSheet.create({
   chatContent: { padding: SPACING.lg, paddingBottom: SPACING.xl },
 
   // Pinned prompt for journaling
+  promptProgressRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, marginBottom: SPACING.lg,
+  },
+  promptProgressDot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: COLORS.bgCardAlt,
+  },
+  promptProgressDotActive: { backgroundColor: COLORS.accent },
+  promptProgressDotCurrent: { backgroundColor: COLORS.accent, width: 20 },
+  progressLabel: {
+    fontSize: 12, color: COLORS.textMuted, marginLeft: 6,
+  },
   promptPinned: {
     backgroundColor: COLORS.bgCardAlt, borderRadius: RADIUS.md,
-    padding: SPACING.lg, marginBottom: SPACING.xl,
+    padding: SPACING.lg, marginBottom: SPACING.lg,
     borderWidth: 1, borderColor: COLORS.border,
   },
   promptLabel: {

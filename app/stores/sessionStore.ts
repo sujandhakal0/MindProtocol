@@ -33,8 +33,11 @@ interface SessionState {
   // Current question index in the progressive flow
   currentQuestionIndex: number;
 
-  // Generated prompt (for single-prompt mode fallback)
-  generatedPrompt: string;
+  // Generated prompts (3 progressive depth prompts)
+  generatedPrompts: string[];
+
+  // Which prompt the user is currently on (0-indexed)
+  currentPromptIndex: number;
 
   // Combined journal text (all entries joined)
   journalText: string;
@@ -55,7 +58,8 @@ interface SessionState {
   appendMessage: (msg: ChatMessage) => void;
   addJournalEntry: (entry: JournalEntry) => void;
   setCurrentQuestionIndex: (i: number) => void;
-  setGeneratedPrompt: (p: string) => void;
+  setGeneratedPrompts: (p: string[]) => void;
+  advancePrompt: () => void;
   setJournalText: (t: string) => void;
   setSessionReflection: (r: string) => void;
   setPostSliders: (s: Sliders) => void;
@@ -76,7 +80,8 @@ export const useSessionStore = create<SessionState>((set) => ({
   conversation: [],
   journalEntries: [],
   currentQuestionIndex: 0,
-  generatedPrompt: '',
+  generatedPrompts: [],
+  currentPromptIndex: 0,
   journalText: '',
   sessionReflection: '',
   postSliders: { ...DEFAULT_SLIDERS },
@@ -90,7 +95,10 @@ export const useSessionStore = create<SessionState>((set) => ({
     journalEntries: [...state.journalEntries, entry],
   })),
   setCurrentQuestionIndex: (i) => set({ currentQuestionIndex: i }),
-  setGeneratedPrompt: (p) => set({ generatedPrompt: p }),
+  setGeneratedPrompts: (p) => set({ generatedPrompts: p, currentPromptIndex: 0 }),
+  advancePrompt: () => set((state) => ({
+    currentPromptIndex: Math.min(state.currentPromptIndex + 1, state.generatedPrompts.length - 1),
+  })),
   setJournalText: (t) => set({ journalText: t }),
   setSessionReflection: (r) => set({ sessionReflection: r }),
   setPostSliders: (s) => set({ postSliders: s }),
@@ -102,7 +110,8 @@ export const useSessionStore = create<SessionState>((set) => ({
       conversation: [],
       journalEntries: [],
       currentQuestionIndex: 0,
-      generatedPrompt: '',
+      generatedPrompts: [],
+      currentPromptIndex: 0,
       journalText: '',
       sessionReflection: '',
       postSliders: { ...DEFAULT_SLIDERS },

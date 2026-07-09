@@ -1,6 +1,6 @@
 import axios from 'axios';
 import {
-  SYSTEM_PROMPT_V5,
+  SYSTEM_PROMPT_V5_PROMPTS,
   CRISIS_SENTINEL,
   CRISIS_CHECK_PROMPT,
   SESSION_REFLECTION_PROMPT,
@@ -28,11 +28,12 @@ export interface SessionInput {
 
 export type PromptResult =
   | { type: 'prompt'; text: string }
+  | { type: 'prompts'; prompts: string[] }
   | { type: 'crisis' }
   | { type: 'rate_limit' }
   | { type: 'error'; message: string };
 
-/** Few-shot examples aligned with MindProtocol_Research_Bibliography.md routing logic. */
+/** Few-shot examples aligned with 3-prompt progressive depth arc. */
 const FEW_SHOT_MESSAGES = [
   {
     role: 'user' as const,
@@ -50,9 +51,7 @@ User: that I'm not good enough`,
   },
   {
     role: 'assistant' as const,
-    content: `Write without stopping to edit. This is only for you.
-
-You said your chest feels tight, and that the feeling's message is "I'm not good enough." That's a heavy thing to carry around all day. Write to that tightness in your chest — not to argue with it, not to fix it, just to let it know you're listening. What would change if you stopped trying to prove you're enough, and just sat with the possibility that you already are?`,
+    content: `["Write without stopping to edit. This is only for you.\\n\\nYour professor's comment is still sitting in your chest — that tight, pressurized feeling hasn't let go. Imagine you could step outside this moment and watch it happen from across the room: a student hearing a comment about their work. What would you notice about that scene that you can't see from inside it?","Write without stopping to edit. This is only for you.\\n\\nYou used the word \"embarrassed\" — but you also said \"replaying\" and \"stuck.\" If you had to pick the one that cuts deepest out of those three, which root word would it be? Not the surface feeling, but the one underneath that's been driving the replay loop. Write toward that word and see what it opens.","Write without stopping to edit. This is only for you.\\n\\nThat tightness in your chest keeps whispering \"not good enough.\" But whose voice is that, really — is it yours, or is it the echo of something you've been told? If a close friend came to you carrying this exact weight, what would you say to them about whether this one moment defines anything at all?"]`,
   },
   {
     role: 'user' as const,
@@ -70,9 +69,7 @@ User: that I should be better by now`,
   },
   {
     role: 'assistant' as const,
-    content: `Write without stopping to edit. This is only for you.
-
-Your shoulders are holding all that tension, and the feeling keeps telling you that you "should be better by now." But what does "better" actually look like — whose standard are you measuring against? Write about the version of yourself you think you're supposed to be, and then write about the version that's sitting here right now, tired shoulders and all.`,
+    content: `["Write without stopping to edit. This is only for you.\\n\\nYour shoulders are holding every mistake from this week — tense and heavy, like they're carrying something that isn't yours to hold alone. If you could set those shoulders down for a moment and look at the week from across a table, what would you see that the tension is hiding from you?","Write without stopping to edit. This is only for you.\\n\\nYou said \"ashamed\" and \"annoyed at myself\" — those are close, but they're not the same. If you sit with the shame for another breath, is it closer to the feeling of having failed someone else, or the feeling of having failed the version of yourself you thought you'd be by now? Write about which one it is.","Write without stopping to edit. This is only for you.\\n\\nYou told yourself you \"should be better by now.\" That word — should — is doing a lot of heavy lifting. If you replaced it with something softer, something you'd actually say to a friend in your position, what would come out? Write it to yourself, exactly as you'd say it to them."]`,
   },
   {
     role: 'user' as const,
@@ -90,9 +87,7 @@ User: I don't know, just tired of everything`,
   },
   {
     role: 'assistant' as const,
-    content: `Write without stopping to edit. This is only for you.
-
-You said this feeling is everywhere and nowhere — and that it's tired of everything. That kind of numbness doesn't need to be decoded right now. Instead, just describe today the way you'd describe it to someone who wasn't there: what happened, in plain, boring detail, without judging any of it. Sometimes the writing itself is the point, not what it reveals.`,
+    content: `["Write without stopping to edit. This is only for you.\\n\\nNumbness is its own kind of heavy — not the sharp kind, but the kind that sits on everything and makes it all feel the same. You said it's everywhere and nowhere at once. What would it look like if you described today to someone who wasn't there — not the feelings, just what actually happened, the plain facts of the day?","Write without stopping to edit. This is only for you.\\n\\nYou said \"tired of everything\" — and that's a real thing, not a small thing. If you had to separate the tired from the everything, which part is actually the heaviest right now? Not all of it, just the one piece that's pulling the rest down. Name it if you can.","Write without stopping to edit. This is only for you.\\n\\nSometimes numbness is the brain's way of saying \"enough for now\" — and that's not failure, that's protection. You don't have to push through it today. If you could give this flat, tired version of yourself one small thing — not a solution, just a kindness — what would it be?"]`,
   },
 ];
 
@@ -173,31 +168,40 @@ ${transcriptStr}`;
   try {
     const output = await callGroq(
       PRIMARY_MODEL,
-      SYSTEM_PROMPT_V5,
+      SYSTEM_PROMPT_V5_PROMPTS,
       userMessage,
       FEW_SHOT_MESSAGES,
-      350
+      800
     );
 
     if (output.includes(CRISIS_SENTINEL)) {
       return { type: 'crisis' };
     }
 
-    return { type: 'prompt', text: output };
+    const prompts = parsePromptsArray(output);
+    if (prompts.length > 0) {
+      return { type: 'prompts', prompts };
+    }
+    // Fallback: if JSON parsing fails, split by double newline or use raw text
+    return { type: 'prompts', prompts: [output] };
   } catch (error: any) {
     if (error.response?.status === 429) {
       try {
         const fallbackOutput = await callGroq(
           FALLBACK_MODEL,
-          SYSTEM_PROMPT_V5,
+          SYSTEM_PROMPT_V5_PROMPTS,
           userMessage,
           FEW_SHOT_MESSAGES,
-          350
+          800
         );
         if (fallbackOutput.includes(CRISIS_SENTINEL)) {
           return { type: 'crisis' };
         }
-        return { type: 'prompt', text: fallbackOutput };
+        const prompts = parsePromptsArray(fallbackOutput);
+        if (prompts.length > 0) {
+          return { type: 'prompts', prompts };
+        }
+        return { type: 'prompts', prompts: [fallbackOutput] };
       } catch {
         return { type: 'rate_limit' };
       }
@@ -205,6 +209,31 @@ ${transcriptStr}`;
 
     return { type: 'error', message: error.message ?? 'Unknown error' };
   }
+}
+
+/** Try to parse LLM output as a JSON array of prompts. */
+function parsePromptsArray(text: string): string[] {
+  try {
+    // Try direct JSON parse
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed.filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
+    }
+  } catch {
+    // Try to extract JSON array from markdown code block
+    const jsonMatch = text.match(/\[[\s\S]*?\]/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
+        }
+      } catch {
+        // give up
+      }
+    }
+  }
+  return [];
 }
 
 const FOLLOW_UP_SYSTEM_PROMPT = `You are MindProtocol's journaling guide. You generate ONE follow-up question for a user who is in the middle of a progressive deepening journaling session.
