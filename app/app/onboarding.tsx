@@ -42,7 +42,7 @@ export default function Onboarding() {
       setStep(step + 1);
       return;
     }
-    await saveUserProfile(selectedAge, selectedRole);
+    await saveUserProfile(selectedAge, selectedRole, selectedGender);
     setProfile(selectedAge, selectedRole);
     setOnboardingComplete(true);
     router.replace('/session-time');

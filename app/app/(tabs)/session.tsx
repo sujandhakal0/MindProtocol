@@ -17,7 +17,8 @@ import {
   savePostSliders, completeSession
 } from '../../lib/db';
 import {
-  checkCrisisInText, generateFollowUpQuestion, generateSessionReflection
+  checkCrisisInText, generateFollowUpQuestion, generateSessionReflection,
+  generateJournalingPrompt, SessionInput
 } from '../../lib/groq';
 import { PROGRESSIVE_QUESTIONS } from '../../constants/systemPrompt';
 
@@ -82,7 +83,7 @@ export default function SessionTab() {
     setCurrentQuestionIndex, setGeneratedPrompt, setJournalText,
     setSessionReflection, setSessionId, resetSession
   } = useSessionStore();
-  const { ageRange, role } = useUserStore();
+  const { ageRange, role, gender } = useUserStore();
 
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -211,14 +212,27 @@ export default function SessionTab() {
 
     if (nextIndex >= PROGRESSIVE_QUESTIONS.length) {
       setIsTyping(true);
-      const followUp = await generateFollowUpQuestion(
-        [...conversation, { role: 'ai', text: questionText }, { role: 'user', text }],
-        currentQ?.phase || 'deepening',
-        preSliders
-      );
+
+      const sessionInput: SessionInput = {
+        ageRange,
+        role,
+        gender,
+        sliders: preSliders,
+        conversation: [...conversation, { role: 'ai', text: questionText }, { role: 'user', text }],
+      };
+
+      const [followUp, promptResult] = await Promise.all([
+        generateFollowUpQuestion(
+          sessionInput.conversation,
+          currentQ?.phase || 'deepening',
+          preSliders
+        ),
+        generateJournalingPrompt(sessionInput),
+      ]);
+
       setIsTyping(false);
 
-      if (followUp.type === 'crisis') {
+      if (followUp.type === 'crisis' || promptResult.type === 'crisis') {
         router.push('/crisis');
         return;
       }
@@ -226,6 +240,10 @@ export default function SessionTab() {
       if (followUp.type === 'prompt') {
         appendMessage({ role: 'ai', text: followUp.text });
       }
+
+      const journalingPrompt = promptResult.type === 'prompt' ? promptResult.text : '';
+      setGeneratedPrompt(journalingPrompt);
+
       setCurrentQuestionIndex(nextIndex);
       setStep('journaling');
     } else {
@@ -257,8 +275,6 @@ export default function SessionTab() {
     setInputText('');
     Keyboard.dismiss();
 
-    appendMessage({ role: 'user', text });
-
     setIsTyping(true);
     const crisisResult = await checkCrisisInText(text);
     setIsTyping(false);
@@ -267,20 +283,24 @@ export default function SessionTab() {
       router.push('/crisis');
       return;
     }
+
+    addJournalEntry({
+      questionIndex: currentQuestionIndex,
+      phase: 'journaling',
+      question: generatedPrompt || 'Free journaling',
+      response: text,
+      timestamp: Date.now(),
+    });
   }
 
   async function handleJournalingDone() {
     setIsSaving(true);
 
     if (inputText.trim()) {
-      const qi = currentQuestionIndex;
-      const currentQ = qi < PROGRESSIVE_QUESTIONS.length
-        ? PROGRESSIVE_QUESTIONS[qi]
-        : { phase: 'final', question: 'Final reflection' };
       addJournalEntry({
-        questionIndex: qi,
-        phase: currentQ.phase,
-        question: currentQ.question,
+        questionIndex: currentQuestionIndex,
+        phase: 'journaling',
+        question: generatedPrompt || 'Free journaling',
         response: inputText.trim(),
         timestamp: Date.now(),
       });
@@ -295,7 +315,7 @@ export default function SessionTab() {
 
     if (sessionId) {
       await saveDiagnosticTranscript(sessionId, transcript);
-      await saveGeneratedPrompt(sessionId, allText.substring(0, 500));
+      await saveGeneratedPrompt(sessionId, generatedPrompt || allText.substring(0, 500));
       await saveJournalText(sessionId, allText);
     }
 
@@ -457,9 +477,7 @@ export default function SessionTab() {
 
   // ─── JOURNALING (70% phase) ────────────────────────────────────────────────
   if (step === 'journaling') {
-    const qi = currentQuestionIndex;
-    const lastConversationMsg = conversation.length > 0 ? conversation[conversation.length - 1] : null;
-    const activePrompt = lastConversationMsg?.text || 'Write freely for the next few minutes.';
+    const activePrompt = generatedPrompt || 'Write freely for the next few minutes. There are no wrong answers — just write whatever comes up for you.';
     const mins = Math.floor(elapsedSeconds / 60);
     const secs = elapsedSeconds % 60;
     const atFifteen = elapsedSeconds >= 15 * 60;
@@ -491,14 +509,21 @@ export default function SessionTab() {
           contentContainerStyle={ss.chatContent}
           onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
         >
-          {/* Pinned prompt in serif-like font */}
+          {/* Personalized prompt — serif-like style */}
           <View style={ss.promptPinned}>
+            <Text style={ss.promptLabel}>Your prompt:</Text>
             <Text style={ss.promptText}>{activePrompt}</Text>
           </View>
 
-          {conversation.slice(-4).map((msg, i) => (
-            <View key={i} style={[ss.bubble, msg.role === 'ai' ? ss.bubbleAi : ss.bubbleUser]}>
-              <Text style={ss.bubbleText}>{msg.text}</Text>
+          {/* Instruction */}
+          <Text style={ss.journalHint}>
+            Write as much or as little as you want. Press the arrow to save each chunk, or press Done when finished.
+          </Text>
+
+          {/* Journal entries written so far */}
+          {journalEntries.filter(e => e.phase === 'journaling').map((entry, i) => (
+            <View key={i} style={[ss.bubble, ss.bubbleUser, { alignSelf: 'stretch' }]}>
+              <Text style={ss.bubbleText}>{entry.response}</Text>
             </View>
           ))}
 
@@ -523,7 +548,7 @@ export default function SessionTab() {
           </TouchableOpacity>
           <TextInput
             style={ss.chatInput}
-            placeholder={isRecording ? 'Listening...' : 'Keep writing...'}
+            placeholder={isRecording ? 'Listening...' : 'Write freely here...'}
             placeholderTextColor={COLORS.textMuted}
             value={isRecording ? (partialResult || inputText) : inputText}
             onChangeText={setInputText}
@@ -690,9 +715,18 @@ const ss = StyleSheet.create({
     padding: SPACING.lg, marginBottom: SPACING.xl,
     borderWidth: 1, borderColor: COLORS.border,
   },
+  promptLabel: {
+    fontSize: 11, fontWeight: '700', color: COLORS.accent,
+    textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6,
+  },
   promptText: {
     fontSize: 17, color: COLORS.textPrimary, lineHeight: 26,
     fontStyle: 'italic',
+  },
+  journalHint: {
+    fontSize: 13, color: COLORS.textMuted, lineHeight: 18,
+    textAlign: 'center', marginBottom: SPACING.lg,
+    paddingHorizontal: SPACING.md,
   },
 
   bubble: { maxWidth: '88%', padding: 14, borderRadius: 20, marginBottom: SPACING.md },

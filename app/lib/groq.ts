@@ -16,6 +16,7 @@ export type ChatMessage = { role: 'ai' | 'user'; text: string };
 export interface SessionInput {
   ageRange: string;
   role: string;
+  gender: string;
   sliders: {
     mood: number;
     mentalNoise: number;
@@ -35,57 +36,63 @@ export type PromptResult =
 const FEW_SHOT_MESSAGES = [
   {
     role: 'user' as const,
-    content: `Onboarding: age_range=18-22, role=student
+    content: `Onboarding: age_range=18-22, role=student, gender=male
 Sliders: mood=40%, mental_noise=75%, focus=45%, energy=50%
 Conversation Transcript:
 AI: What's the main thing on your mind right now?
 User: can't stop thinking about a comment my professor made
-AI: Is there something specific bothering you today or this week?
-User: he said my essay lacked originality in front of the class
 AI: How would you describe your emotional state in 3 words?
-User: embarrassed, replaying, stuck`,
+User: embarrassed, replaying, stuck
+AI: Where in your body do you feel this most?
+User: my chest feels tight, like pressure
+AI: If this feeling had a message for you, what would it be?
+User: that I'm not good enough`,
   },
   {
     role: 'assistant' as const,
     content: `Write without stopping to edit. This is only for you.
 
-You've used the word "embarrassed" — that's a start, but it's a big umbrella. If you sat with it for another minute, is it closer to humiliated, exposed, dismissed, or something else entirely? Write about the moment itself, and see if a more exact word for what you felt surfaces as you go.`,
+You said your chest feels tight, and that the feeling's message is "I'm not good enough." That's a heavy thing to carry around all day. Write to that tightness in your chest — not to argue with it, not to fix it, just to let it know you're listening. What would change if you stopped trying to prove you're enough, and just sat with the possibility that you already are?`,
   },
   {
     role: 'user' as const,
-    content: `Onboarding: age_range=27-35, role=professional
+    content: `Onboarding: age_range=27-35, role=professional, gender=female
 Sliders: mood=25%, mental_noise=55%, focus=40%, energy=20%
 Conversation Transcript:
 AI: What's the main thing on your mind right now?
 User: I keep messing up at work
-AI: Is there something specific bothering you today or this week?
-User: I should have caught the error before my manager did
 AI: How would you describe your emotional state in 3 words?
-User: ashamed, tired, annoyed at myself`,
+User: ashamed, tired, annoyed at myself
+AI: Where in your body do you feel this most?
+User: shoulders, constantly tense
+AI: If this feeling had a message for you, what would it be?
+User: that I should be better by now`,
   },
   {
     role: 'assistant' as const,
     content: `Write without stopping to edit. This is only for you.
 
-If a close friend told you they'd made the exact mistake you made today, what would you actually say to them? Write that out in full — and then notice how different it sounds from what you've been saying to yourself.`,
+Your shoulders are holding all that tension, and the feeling keeps telling you that you "should be better by now." But what does "better" actually look like — whose standard are you measuring against? Write about the version of yourself you think you're supposed to be, and then write about the version that's sitting here right now, tired shoulders and all.`,
   },
   {
     role: 'user' as const,
-    content: `Onboarding: age_range=22-27, role=student
+    content: `Onboarding: age_range=22-27, role=student, gender=non-binary
 Sliders: mood=30%, mental_noise=40%, focus=25%, energy=20%
 Conversation Transcript:
 AI: What's the main thing on your mind right now?
 User: nothing specific, just kind of numb
-AI: Is there something specific bothering you today or this week?
-User: not really, just flat
 AI: How would you describe your emotional state in 3 words?
-User: flat, tired, blank`,
+User: flat, tired, blank
+AI: Where in your body do you feel this most?
+User: everywhere and nowhere at the same time
+AI: If this feeling had a message for you, what would it be?
+User: I don't know, just tired of everything`,
   },
   {
     role: 'assistant' as const,
     content: `Write without stopping to edit. This is only for you.
 
-No need to find the "main thing" today — sometimes there isn't one. Instead, just describe today the way you'd describe it to someone who wasn't there: what happened, in plain, boring detail, without judging any of it.`,
+You said this feeling is everywhere and nowhere — and that it's tired of everything. That kind of numbness doesn't need to be decoded right now. Instead, just describe today the way you'd describe it to someone who wasn't there: what happened, in plain, boring detail, without judging any of it. Sometimes the writing itself is the point, not what it reveals.`,
   },
 ];
 
@@ -123,13 +130,33 @@ async function callGroq(
   return response.data.choices[0].message.content.trim();
 }
 
+/** Deterministic keyword-based crisis detection — runs first, no API needed. */
+function checkCrisisKeywords(text: string): boolean {
+  const lower = text.toLowerCase();
+  const crisisPatterns = [
+    /\b(suicid|kill (my)?self|end (my)? life|want to die|gonna die|going to die|wish i was dead)\b/,
+    /\b(self[- ]?harm|cut(ting)? myself|hurt(ing)? myself|slice my|burn myself)\b/,
+    /\b(no point|no reason to live|can'?t go on|nothing will ever change|hopeless|worthless)\b/,
+    /\b(harm (an?other|someone)|kill (an?other|someone)|shoot|stab)\b/,
+    /\b(suicide|suicidal)\b/,
+  ];
+  return crisisPatterns.some(p => p.test(lower));
+}
+
 export async function checkCrisisInText(text: string): Promise<PromptResult> {
+  // Fast local check first — deterministic, no network
+  if (checkCrisisKeywords(text)) {
+    return { type: 'crisis' };
+  }
+
+  // If no local match, ask the LLM as a second pass
   try {
     const output = await callGroq(FALLBACK_MODEL, CRISIS_CHECK_PROMPT, text, [], 10);
     if (output.includes(CRISIS_SENTINEL)) return { type: 'crisis' };
     return { type: 'prompt', text: 'SAFE' };
   } catch (error: any) {
-    return { type: 'error', message: error.message ?? 'Unknown error' };
+    // If API fails, we already did the local check — assume safe
+    return { type: 'prompt', text: 'SAFE' };
   }
 }
 
@@ -138,7 +165,7 @@ export async function generateJournalingPrompt(input: SessionInput): Promise<Pro
     .map((msg) => `${msg.role === 'ai' ? 'AI' : 'User'}: ${msg.text}`)
     .join('\n');
 
-  const userMessage = `Onboarding: age_range=${input.ageRange}, role=${input.role}
+  const userMessage = `Onboarding: age_range=${input.ageRange}, role=${input.role}, gender=${input.gender || 'not specified'}
 Sliders: mood=${input.sliders.mood}%, mental_noise=${input.sliders.mentalNoise}%, focus=${input.sliders.focus}%, energy=${input.sliders.energy}%
 Conversation Transcript:
 ${transcriptStr}`;

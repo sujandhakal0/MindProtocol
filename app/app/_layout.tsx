@@ -24,7 +24,7 @@ export default function RootLayout() {
         if (onboarded) {
           const profile = await getUserProfile();
           if (profile) {
-            setProfile(profile.age_range, profile.role);
+            setProfile(profile.age_range, profile.role, profile.gender || '');
             setSessionTime(profile.session_time);
           }
           setOnboardingComplete(true);

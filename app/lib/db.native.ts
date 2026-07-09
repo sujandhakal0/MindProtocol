@@ -11,12 +11,12 @@ export async function initDb() {
       id INTEGER PRIMARY KEY,
       age_range TEXT NOT NULL,
       role TEXT NOT NULL,
+      gender TEXT DEFAULT '',
       session_time TEXT DEFAULT '21:00',
       created_at TEXT DEFAULT (datetime('now'))
     );
 
-    DROP TABLE IF EXISTS sessions;
-    CREATE TABLE sessions (
+    CREATE TABLE IF NOT EXISTS sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date TEXT NOT NULL,
       pre_mood INTEGER,
@@ -48,10 +48,10 @@ export async function initDb() {
   );
 }
 
-export async function saveUserProfile(ageRange: string, role: string) {
+export async function saveUserProfile(ageRange: string, role: string, gender: string = '') {
   await nativeDb!.runAsync(
-    `INSERT OR REPLACE INTO user_profile (id, age_range, role, session_time) VALUES (1, ?, ?, COALESCE((SELECT session_time FROM user_profile WHERE id=1), '21:00'))`,
-    [ageRange, role]
+    `INSERT OR REPLACE INTO user_profile (id, age_range, role, gender, session_time) VALUES (1, ?, ?, ?, COALESCE((SELECT session_time FROM user_profile WHERE id=1), '21:00'))`,
+    [ageRange, role, gender]
   );
 }
 
