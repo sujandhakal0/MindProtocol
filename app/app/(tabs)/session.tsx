@@ -45,7 +45,10 @@ function SliderRow({
   color: string; low: string; high: string;
 }) {
   const trackWidth = useRef(280);
-  const startValue = useRef(value);
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   const clamp = (v: number) => Math.round(Math.max(0, Math.min(100, v)) / 5) * 5;
 
@@ -53,13 +56,11 @@ function SliderRow({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        startValue.current = value;
-      },
+      onPanResponderGrant: () => {},
       onPanResponderMove: (_, gestureState) => {
         const pct = (gestureState.dx / trackWidth.current) * 100;
-        const newVal = clamp(startValue.current + pct);
-        onChange(newVal);
+        const newVal = clamp(valueRef.current + pct);
+        onChangeRef.current(newVal);
       },
       onPanResponderRelease: () => {},
     })
