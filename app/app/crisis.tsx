@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ScrollView, Linking, Platform, TouchableOpacity
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS } from '../constants/theme';
+import { THERAPISTS } from '../data/therapists';
 
 const RESOURCES = [
   { label: 'Samaritans Nepal (24/7)', number: '16600101234', url: 'tel:16600101234' },
@@ -60,6 +61,55 @@ export default function CrisisScreen() {
         </Text>
       </View>
 
+      {/* ─── TALK TO A PROFESSIONAL ───────────────────────────── */}
+      <Text style={styles.sectionLabel}>TALK TO A PROFESSIONAL</Text>
+      <Text style={styles.therapistIntro}>
+        If you'd like to talk to a trained counselor or therapist, here are some options in Nepal.
+      </Text>
+
+      {THERAPISTS.map((t) => (
+        <View key={t.id} style={styles.therapistCard}>
+          <Text style={styles.therapistName}>{t.name}</Text>
+          <Text style={styles.therapistTitle}>{t.title}</Text>
+
+          <View style={styles.tagRow}>
+            {t.specialties.map((s) => (
+              <View key={s} style={styles.tag}>
+                <Text style={styles.tagText}>{s}</Text>
+              </View>
+            ))}
+          </View>
+
+          <Text style={styles.therapistBio}>{t.bio}</Text>
+
+          <View style={styles.therapistMeta}>
+            <Text style={styles.metaText}>
+              <Ionicons name="time-outline" size={12} color={COLORS.textMuted} /> {t.availability}
+            </Text>
+            <Text style={styles.metaText}>
+              <Ionicons name="cash-outline" size={12} color={COLORS.textMuted} /> {t.priceRange}
+            </Text>
+          </View>
+
+          <View style={styles.therapistActions}>
+            <TouchableOpacity
+              style={styles.callBtn}
+              onPress={() => Linking.openURL(`tel:${t.phone}`)}
+            >
+              <Ionicons name="call-outline" size={16} color="#fff" />
+              <Text style={styles.callBtnText}>Call</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bookBtn}
+              onPress={() => Linking.openURL(t.bookingUrl)}
+            >
+              <Ionicons name="calendar-outline" size={16} color={COLORS.accent} />
+              <Text style={styles.bookBtnText}>Book session</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ))}
+
       <Text style={styles.footerText}>
         This screen will remain here. Take your time.
       </Text>
@@ -93,7 +143,7 @@ const styles = StyleSheet.create({
 
   sectionLabel: {
     fontSize: 11, fontWeight: '700', color: COLORS.textMuted,
-    letterSpacing: 1.5, marginBottom: SPACING.md,
+    letterSpacing: 1.5, marginBottom: SPACING.md, marginTop: SPACING.sm,
   },
 
   resourceCard: {
@@ -112,8 +162,43 @@ const styles = StyleSheet.create({
   },
   noteText: { fontSize: 13, color: COLORS.textMuted, lineHeight: 18 },
 
+  // Therapist section
+  therapistIntro: {
+    fontSize: 13, color: COLORS.textSecondary, lineHeight: 18,
+    marginBottom: SPACING.md,
+  },
+  therapistCard: {
+    backgroundColor: COLORS.bgCard, borderRadius: RADIUS.md,
+    padding: SPACING.lg, marginBottom: 12,
+    borderWidth: 1, borderColor: COLORS.border,
+  },
+  therapistName: { fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 2 },
+  therapistTitle: { fontSize: 12, color: COLORS.textMuted, marginBottom: 10 },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  tag: {
+    backgroundColor: COLORS.bgCardAlt, borderRadius: RADIUS.full,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  tagText: { fontSize: 11, color: COLORS.textSecondary },
+  therapistBio: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 18, marginBottom: 10 },
+  therapistMeta: { gap: 4, marginBottom: 12 },
+  metaText: { fontSize: 12, color: COLORS.textMuted },
+  therapistActions: { flexDirection: 'row', gap: 10 },
+  callBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10, borderRadius: RADIUS.md,
+    backgroundColor: COLORS.accent,
+  },
+  callBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  bookBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10, borderRadius: RADIUS.md,
+    backgroundColor: COLORS.bgCardAlt, borderWidth: 1, borderColor: COLORS.border,
+  },
+  bookBtnText: { fontSize: 13, fontWeight: '600', color: COLORS.accent },
+
   footerText: {
     fontSize: 12, color: COLORS.textMuted, textAlign: 'center',
-    fontStyle: 'italic', marginTop: SPACING.md,
+    fontStyle: 'italic', marginTop: SPACING.lg,
   },
 });
