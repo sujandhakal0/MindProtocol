@@ -2,10 +2,9 @@ import { View, Text, StyleSheet, ScrollView, Linking, Platform } from 'react-nat
 import { COLORS, SPACING, RADIUS } from '../constants/theme';
 
 const RESOURCES = [
-  { label: 'iCall (India)', number: '9152987821', url: 'tel:9152987821' },
-  { label: 'Vandrevala Foundation (24/7)', number: '1860-2662-345', url: 'tel:18602662345' },
-  { label: 'iCall WhatsApp', number: 'Chat', url: 'https://icallhelpline.org' },
-  { label: 'Crisis Text Line (US)', number: 'Text HOME to 741741', url: 'sms:741741?body=HOME' },
+  { label: 'Samaritans Nepal (24/7)', number: '16600101234', url: 'tel:16600101234' },
+  { label: 'TPO Nepal (24/7)', number: '16600186001', url: 'tel:16600186001' },
+  { label: 'Mental Health Nepal', number: '16600101922', url: 'tel:16600101922' },
 ];
 
 export default function CrisisScreen() {
@@ -48,7 +47,7 @@ export default function CrisisScreen() {
 
       <View style={styles.noteCard}>
         <Text style={styles.noteText}>
-          If you are in immediate danger, please call your local emergency services (100 in India, 911 in the US).
+          If you are in immediate danger, please call your local emergency services (100 in Nepal).
         </Text>
       </View>
 

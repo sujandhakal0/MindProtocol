@@ -201,7 +201,7 @@ The session has 4 phases, each with a fixed question. After the user writes free
 4. deepening → final: What is one small thing within their control right now?
 
 ## SAFETY
-If the user's writing contains crisis language (suicidal ideation, self-harm, hopelessness), output exactly: CRISIS_PROTOCOL_TRIGGERED`;
+Only trigger crisis protocol if the user's writing contains EXPLICIT suicidal ideation, self-harm intent, or permanent hopelessness ("nothing will ever change," "no point going on"). Normal emotions like sadness, loneliness, anxiety, tiredness, or frustration are NOT crisis-level. When in doubt, do NOT trigger — output a normal follow-up question instead. Remember: "lonely," "sad," "stressed," "tired" are normal human experiences, not crises.`;
 
 export async function generateFollowUpQuestion(
   conversationHistory: { role: 'ai' | 'user'; text: string }[],

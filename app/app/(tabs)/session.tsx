@@ -86,7 +86,22 @@ export default function SessionTab() {
   const [isTyping, setIsTyping] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Elapsed timer
+  useEffect(() => {
+    if (step !== 'diagnostic' && step !== 'journaling') return;
+    const interval = setInterval(() => {
+      setElapsedSeconds(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [step]);
+
+  // Reset timer when entering session steps
+  useEffect(() => {
+    if (step === 'diagnostic' || step === 'journaling') setElapsedSeconds(0);
+  }, [step]);
 
   // Audio state
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -223,6 +238,25 @@ export default function SessionTab() {
     }
   }
 
+  async function handleJournalingSend() {
+    if (!inputText.trim()) return;
+
+    const text = inputText.trim();
+    setInputText('');
+    Keyboard.dismiss();
+
+    appendMessage({ role: 'user', text });
+
+    setIsTyping(true);
+    const crisisResult = await checkCrisisInText(text);
+    setIsTyping(false);
+
+    if (crisisResult.type === 'crisis') {
+      router.push('/crisis');
+      return;
+    }
+  }
+
   async function handleJournalingDone() {
     setIsSaving(true);
 
@@ -322,12 +356,15 @@ export default function SessionTab() {
     const qi = currentQuestionIndex;
     const currentQ = qi < PROGRESSIVE_QUESTIONS.length ? PROGRESSIVE_QUESTIONS[qi] : null;
     const questionText = currentQ?.question || 'Tell me more about what you are experiencing.';
+    const mins = Math.floor(elapsedSeconds / 60);
+    const secs = elapsedSeconds % 60;
 
     return (
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: COLORS.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={ss.chatHeader}>
           <View style={ss.headerLeft}>
             <Text style={ss.eyebrow}>CHECK-IN</Text>
+            <Text style={ss.timerText}>{mins}:{secs.toString().padStart(2, '0')}</Text>
           </View>
           <View style={ss.headerRight}>
             <AudioToggle />
@@ -395,17 +432,23 @@ export default function SessionTab() {
     );
   }
 
-  // ─── JOURNALING (70% phase) - no visible timer/word count ────────────────────
+  // ─── JOURNALING (70% phase) ────────────────────────────────────────────────
   if (step === 'journaling') {
     const qi = currentQuestionIndex;
     const lastConversationMsg = conversation.length > 0 ? conversation[conversation.length - 1] : null;
     const activePrompt = lastConversationMsg?.text || 'Write freely for the next few minutes.';
+    const mins = Math.floor(elapsedSeconds / 60);
+    const secs = elapsedSeconds % 60;
+    const atFifteen = elapsedSeconds >= 15 * 60;
 
     return (
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: COLORS.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={ss.chatHeader}>
           <View style={ss.headerLeft}>
             <Text style={ss.eyebrow}>JOURNALING</Text>
+            <Text style={[ss.timerText, atFifteen && ss.timerTextDone]}>
+              {mins}:{secs.toString().padStart(2, '0')} {atFifteen ? '✓ 15 min reached' : '/ 15:00'}
+            </Text>
           </View>
           <View style={ss.headerRight}>
             <AudioToggle />
@@ -455,7 +498,7 @@ export default function SessionTab() {
           />
           <TouchableOpacity
             style={[ss.sendBtn, !inputText.trim() && { opacity: 0.5 }]}
-            onPress={handleJournalingDone}
+            onPress={handleJournalingSend}
             disabled={!inputText.trim() || isTyping}
           >
             <Text style={ss.sendIcon}>↑</Text>
@@ -551,6 +594,8 @@ const ss = StyleSheet.create({
   centerContent: { justifyContent: 'center', alignItems: 'center' },
 
   eyebrow: { fontSize: 10, fontWeight: '700', color: COLORS.accent, letterSpacing: 2, marginBottom: 4 },
+  timerText: { fontSize: 13, fontWeight: '600', color: COLORS.textSecondary },
+  timerTextDone: { color: COLORS.success },
   title: { fontSize: 28, fontWeight: '700', color: COLORS.textPrimary, lineHeight: 36, marginBottom: 8 },
   sub: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 20, marginBottom: SPACING.xl },
 
@@ -630,14 +675,14 @@ const ss = StyleSheet.create({
   },
   chatInput: {
     flex: 1, backgroundColor: COLORS.bgInput, borderRadius: 20,
-    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12,
-    color: COLORS.textPrimary, fontSize: 15, maxHeight: 120,
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16,
+    color: COLORS.textPrimary, fontSize: 15, maxHeight: 200, minHeight: 60,
   },
   sendBtn: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.accent,
+    width: 48, height: 48, borderRadius: 24, backgroundColor: COLORS.accent,
     alignItems: 'center', justifyContent: 'center',
   },
-  sendIcon: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  sendIcon: { color: '#fff', fontSize: 22, fontWeight: '700' },
 
   // Complete
   completeHeader: { alignItems: 'center', paddingVertical: SPACING.xl, marginBottom: SPACING.lg },

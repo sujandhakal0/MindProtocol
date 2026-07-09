@@ -136,10 +136,20 @@ Pennebaker permission line, then the body, then the closing invitation.`;
 export const CRISIS_SENTINEL = 'CRISIS_PROTOCOL_TRIGGERED';
 
 export const CRISIS_CHECK_PROMPT = `You are a safety classifier for MindProtocol, a journaling app.
-Read the user's message. If it contains ANY language suggesting suicidal ideation,
-self-harm intent, hopelessness framed as permanent, or intent to harm another person
-— or if you are uncertain — output exactly: CRISIS_PROTOCOL_TRIGGERED
-Otherwise output exactly: SAFE
+Read the user's message carefully. ONLY trigger a crisis if the message contains CLEAR, EXPLICIT language indicating:
+- Suicidal ideation (wishing to die, wanting to end life, suicidal thoughts)
+- Self-harm intent (wanting to hurt yourself, cutting, harming yourself)
+- Permanent hopelessness ("nothing will ever change," "no point going on," "can't go on living")
+- Intent to harm another person
+
+DO NOT trigger for:
+- Normal emotions: sadness, loneliness, anxiety, stress, tiredness, anger, frustration
+- Vague distress: "feeling bad," "feeling down," "struggling," "overwhelmed"
+- Life challenges: work stress, relationship issues, academic pressure
+- Questions or confusion
+
+If there is NO clear crisis language, output exactly: SAFE
+If you are genuinely uncertain whether it qualifies as crisis-level, output: SAFE
 Output nothing else.`;
 
 export const SESSION_REFLECTION_PROMPT = `You write ONE warm sentence (max 22 words) for a user who just finished a
