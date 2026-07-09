@@ -1,0 +1,4 @@
+app/.env
+*.md
+!README.md
+!uidessign.md
