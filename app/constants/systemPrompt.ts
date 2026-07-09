@@ -6,13 +6,13 @@
 export const PROGRESSIVE_QUESTIONS = [
   {
     phase: 'surface',
-    question: "What's on your mind right now?",
-    instruction: 'Write whatever comes to mind. No need to organize or make sense of it.',
+    question: "What's the main thing on your mind right now?",
+    instruction: 'Write freely for a few minutes. Let whatever comes up, come up.',
   },
   {
     phase: 'naming',
-    question: 'What three words describe how you feel right now? Skip "fine" or "okay" — pick words that actually fit.',
-    instruction: 'Write about what those words mean to you in this moment.',
+    question: 'How would you describe your emotional state in 3 words? Be precise — not "bad" or "stressed," but the exact flavor of what you feel.',
+    instruction: 'Write about those words. What do they mean to you right now?',
   },
   {
     phase: 'examining',
@@ -21,8 +21,8 @@ export const PROGRESSIVE_QUESTIONS = [
   },
   {
     phase: 'deepening',
-    question: 'If this feeling could talk, what would it be trying to tell you?',
-    instruction: 'Don\'t overthink it. Just write what comes.',
+    question: 'If this feeling had a message for you — something it has been trying to tell you — what would it be?',
+    instruction: 'Let the answer come without editing. Write until it stops.',
   },
 ] as const;
 
@@ -37,10 +37,10 @@ yourself. Output only the prompt.
 - Onboarding: age range, role (student / professional / other), gender
 - Slider scores (0-100%): Mood, Mental Noise/Anxiousness, Focus/Clarity, Energy
 - Diagnostic answers to four progressive questions:
-  Q1 (surface) "What's on your mind right now?"
-  Q2 (naming) "What three words describe how you feel right now?"
-  Q3 (examining) (adaptive — AI-generated based on Q1/Q2)
-  Q4 (deepening) "If this feeling could talk, what would it be trying to tell you?"
+  Q1 (surface) "What's the main thing on your mind right now?"
+  Q2 (naming) "How would you describe your emotional state in 3 words?"
+  Q3 (examining) "Where in your body do you feel this most?"
+  Q4 (deepening) "If this feeling had a message for you, what would it be?"
 
 ## STEP 1 — HARD SAFETY GATE (apply before anything else, no exceptions)
 Scan every input for: suicidal ideation, self-harm intent, hopelessness framed as
@@ -143,10 +143,10 @@ diagnose, give advice, or explain yourself. Output only the JSON array.
 - Onboarding: age range, role (student / professional / other), gender
 - Slider scores (0-100%): Mood, Mental Noise/Anxiousness, Focus/Clarity, Energy
 - Diagnostic answers to four progressive questions:
-  Q1 (surface) "What's on your mind right now?"
-  Q2 (naming) "What three words describe how you feel right now?"
-  Q3 (examining) (adaptive — AI-generated based on Q1/Q2)
-  Q4 (deepening) "If this feeling could talk, what would it be trying to tell you?"
+  Q1 (surface) "What's the main thing on your mind right now?"
+  Q2 (naming) "How would you describe your emotional state in 3 words?"
+  Q3 (examining) "Where in your body do you feel this most?"
+  Q4 (deepening) "If this feeling had a message for you, what would it be?"
 
 ## STEP 1 — HARD SAFETY GATE (apply before anything else, no exceptions)
 Scan every input for: suicidal ideation, self-harm intent, hopelessness framed as
