@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.lg },
   logoContainer: {
-    width: 32, height: 32, borderRadius: 16, overflow: 'hidden',
+    width: 32, height: 32, borderRadius: 8, overflow: 'hidden',
     backgroundColor: COLORS.bgCard, marginRight: 8,
   },
   logo: { width: 32, height: 32 },

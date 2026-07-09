@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   logoContainer: {
-    width: 52, height: 52, borderRadius: 26, overflow: 'hidden',
+    width: 52, height: 52, borderRadius: 12, overflow: 'hidden',
     backgroundColor: COLORS.bgCard,
   },
   logo: {

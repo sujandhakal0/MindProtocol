@@ -51,9 +51,9 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.border,
     borderTopWidth: 1,
     height: 70,
-    paddingBottom: 10,
+    paddingTop: 14,
   },
-  tabItem: { alignItems: 'center', justifyContent: 'center', paddingTop: 12 },
+  tabItem: { alignItems: 'center', justifyContent: 'center', height: '100%' },
   tabLabel: { fontSize: 10, color: COLORS.textMuted, marginTop: 4 },
   tabLabelFocused: { color: COLORS.accent },
 });

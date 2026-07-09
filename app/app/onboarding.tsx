@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
 
   header: { marginBottom: SPACING.xl },
   logoContainer: {
-    width: 40, height: 40, borderRadius: 20, overflow: 'hidden',
+    width: 40, height: 40, borderRadius: 10, overflow: 'hidden',
     backgroundColor: COLORS.bgCard, marginBottom: SPACING.md,
   },
   logo: { width: 40, height: 40 },
