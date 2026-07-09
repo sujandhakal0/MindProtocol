@@ -90,6 +90,7 @@ export default function SessionTab() {
   const [isSaving, setIsSaving] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [sessionError, setSessionError] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   // Voice input
@@ -181,90 +182,96 @@ export default function SessionTab() {
     const text = inputText.trim();
     setInputText('');
     Keyboard.dismiss();
+    setSessionError(null);
 
-    const qi = currentQuestionIndex;
-    const currentQ = qi < PROGRESSIVE_QUESTIONS.length
-      ? PROGRESSIVE_QUESTIONS[qi]
-      : null;
+    try {
+      const qi = currentQuestionIndex;
+      const currentQ = qi < PROGRESSIVE_QUESTIONS.length
+        ? PROGRESSIVE_QUESTIONS[qi]
+        : null;
 
-    const questionText = currentQ?.question || 'Final reflection';
+      const questionText = currentQ?.question || 'Final reflection';
 
-    const entry: JournalEntry = {
-      questionIndex: qi,
-      phase: currentQ?.phase || 'deepening',
-      question: questionText,
-      response: text,
-      timestamp: Date.now(),
-    };
-    addJournalEntry(entry);
-    appendMessage({ role: 'user', text });
-
-    setIsTyping(true);
-    const crisisResult = await checkCrisisInText(text);
-    setIsTyping(false);
-
-    if (crisisResult.type === 'crisis') {
-      router.push('/crisis');
-      return;
-    }
-
-    const nextIndex = qi + 1;
-
-    if (nextIndex >= PROGRESSIVE_QUESTIONS.length) {
-      setIsTyping(true);
-
-      const sessionInput: SessionInput = {
-        ageRange,
-        role,
-        gender,
-        sliders: preSliders,
-        conversation: [...conversation, { role: 'ai', text: questionText }, { role: 'user', text }],
+      const entry: JournalEntry = {
+        questionIndex: qi,
+        phase: currentQ?.phase || 'deepening',
+        question: questionText,
+        response: text,
+        timestamp: Date.now(),
       };
+      addJournalEntry(entry);
+      appendMessage({ role: 'user', text });
 
-      const [followUp, promptResult] = await Promise.all([
-        generateFollowUpQuestion(
-          sessionInput.conversation,
-          currentQ?.phase || 'deepening',
-          preSliders
-        ),
-        generateJournalingPrompt(sessionInput),
-      ]);
-
-      setIsTyping(false);
-
-      if (followUp.type === 'crisis' || promptResult.type === 'crisis') {
-        router.push('/crisis');
-        return;
-      }
-
-      if (followUp.type === 'prompt') {
-        appendMessage({ role: 'ai', text: followUp.text });
-      }
-
-      const prompts = promptResult.type === 'prompts' ? promptResult.prompts : [];
-      setGeneratedPrompts(prompts.length > 0 ? prompts : ['Write freely for the next few minutes.']);
-
-      setCurrentQuestionIndex(nextIndex);
-      setStep('journaling');
-    } else {
       setIsTyping(true);
-      const followUp = await generateFollowUpQuestion(
-        [...conversation, { role: 'ai', text: questionText }, { role: 'user', text }],
-        currentQ?.phase || 'surface',
-        preSliders
-      );
+      const crisisResult = await checkCrisisInText(text);
       setIsTyping(false);
 
-      if (followUp.type === 'crisis') {
+      if (crisisResult.type === 'crisis') {
         router.push('/crisis');
         return;
       }
 
-      const nextQ = PROGRESSIVE_QUESTIONS[nextIndex];
-      const questionToShow = followUp.type === 'prompt' ? followUp.text : nextQ.question;
+      const nextIndex = qi + 1;
 
-      appendMessage({ role: 'ai', text: questionToShow });
-      setCurrentQuestionIndex(nextIndex);
+      if (nextIndex >= PROGRESSIVE_QUESTIONS.length) {
+        setIsTyping(true);
+
+        const sessionInput: SessionInput = {
+          ageRange,
+          role,
+          gender,
+          sliders: preSliders,
+          conversation: [...conversation, { role: 'ai', text: questionText }, { role: 'user', text }],
+        };
+
+        const [followUp, promptResult] = await Promise.all([
+          generateFollowUpQuestion(
+            sessionInput.conversation,
+            currentQ?.phase || 'deepening',
+            preSliders
+          ),
+          generateJournalingPrompt(sessionInput),
+        ]);
+
+        setIsTyping(false);
+
+        if (followUp.type === 'crisis' || promptResult.type === 'crisis') {
+          router.push('/crisis');
+          return;
+        }
+
+        if (followUp.type === 'prompt') {
+          appendMessage({ role: 'ai', text: followUp.text });
+        }
+
+        const prompts = promptResult.type === 'prompts' ? promptResult.prompts : [];
+        setGeneratedPrompts(prompts.length > 0 ? prompts : ['Write freely for the next few minutes.']);
+
+        setCurrentQuestionIndex(nextIndex);
+        setStep('journaling');
+      } else {
+        setIsTyping(true);
+        const followUp = await generateFollowUpQuestion(
+          [...conversation, { role: 'ai', text: questionText }, { role: 'user', text }],
+          currentQ?.phase || 'surface',
+          preSliders
+        );
+        setIsTyping(false);
+
+        if (followUp.type === 'crisis') {
+          router.push('/crisis');
+          return;
+        }
+
+        const nextQ = PROGRESSIVE_QUESTIONS[nextIndex];
+        const questionToShow = followUp.type === 'prompt' ? followUp.text : nextQ.question;
+
+        appendMessage({ role: 'ai', text: questionToShow });
+        setCurrentQuestionIndex(nextIndex);
+      }
+    } catch (e: any) {
+      setIsTyping(false);
+      setSessionError('Something went wrong. Please try again.');
     }
   }
 
@@ -274,80 +281,98 @@ export default function SessionTab() {
     const text = inputText.trim();
     setInputText('');
     Keyboard.dismiss();
+    setSessionError(null);
 
-    setIsTyping(true);
-    const crisisResult = await checkCrisisInText(text);
-    setIsTyping(false);
+    try {
+      setIsTyping(true);
+      const crisisResult = await checkCrisisInText(text);
+      setIsTyping(false);
 
-    if (crisisResult.type === 'crisis') {
-      router.push('/crisis');
-      return;
-    }
+      if (crisisResult.type === 'crisis') {
+        router.push('/crisis');
+        return;
+      }
 
-    const currentPrompt = generatedPrompts[currentPromptIndex] || 'Free journaling';
-    addJournalEntry({
-      questionIndex: currentPromptIndex,
-      phase: 'journaling',
-      question: currentPrompt,
-      response: text,
-      timestamp: Date.now(),
-    });
-
-    // Advance to next prompt if there is one
-    if (currentPromptIndex < generatedPrompts.length - 1) {
-      advancePrompt();
-    }
-  }
-
-  async function handleJournalingDone() {
-    setIsSaving(true);
-
-    if (inputText.trim()) {
       const currentPrompt = generatedPrompts[currentPromptIndex] || 'Free journaling';
       addJournalEntry({
         questionIndex: currentPromptIndex,
         phase: 'journaling',
         question: currentPrompt,
-        response: inputText.trim(),
+        response: text,
         timestamp: Date.now(),
       });
-      setInputText('');
+
+      // Advance to next prompt if there is one
+      if (currentPromptIndex < generatedPrompts.length - 1) {
+        advancePrompt();
+      }
+    } catch (e: any) {
+      setIsTyping(false);
+      setSessionError('Something went wrong. Please try again.');
     }
+  }
 
-    const allText = journalEntries
-      .map(e => `[${e.phase}]\n${e.question}\n\n${e.response}`)
-      .join('\n\n---\n\n');
+  async function handleJournalingDone() {
+    setIsSaving(true);
+    setSessionError(null);
 
-    const transcript = conversation.map(m => ({ role: m.role as 'ai' | 'user', text: m.text }));
+    try {
+      if (inputText.trim()) {
+        const currentPrompt = generatedPrompts[currentPromptIndex] || 'Free journaling';
+        addJournalEntry({
+          questionIndex: currentPromptIndex,
+          phase: 'journaling',
+          question: currentPrompt,
+          response: inputText.trim(),
+          timestamp: Date.now(),
+        });
+        setInputText('');
+      }
 
-    if (sessionId) {
-      await saveDiagnosticTranscript(sessionId, transcript);
-      await saveGeneratedPrompt(sessionId, generatedPrompts.join('\n\n---\n\n'));
-      await saveJournalText(sessionId, allText);
+      const allText = journalEntries
+        .map(e => `[${e.phase}]\n${e.question}\n\n${e.response}`)
+        .join('\n\n---\n\n');
+
+      const transcript = conversation.map(m => ({ role: m.role as 'ai' | 'user', text: m.text }));
+
+      if (sessionId) {
+        await saveDiagnosticTranscript(sessionId, transcript);
+        await saveGeneratedPrompt(sessionId, generatedPrompts.join('\n\n---\n\n'));
+        await saveJournalText(sessionId, allText);
+      }
+
+      await stopAudio();
+      setIsComplete(true);
+      setIsSaving(false);
+      setStep('post-sliders');
+    } catch (e: any) {
+      setIsSaving(false);
+      setSessionError('Failed to save. Please try again.');
     }
-
-    await stopAudio();
-    setIsComplete(true);
-    setIsSaving(false);
-    setStep('post-sliders');
   }
 
   async function handlePostSlidersNext() {
     setIsSaving(true);
-    if (sessionId) {
-      await savePostSliders(sessionId, postSliders.mood, postSliders.mentalNoise, postSliders.focus, postSliders.energy);
+    setSessionError(null);
+    try {
+      if (sessionId) {
+        await savePostSliders(sessionId, postSliders.mood, postSliders.mentalNoise, postSliders.focus, postSliders.energy);
 
-      const reflectionResult = await generateSessionReflection(preSliders, postSliders);
-      const reflection = reflectionResult.type === 'prompt'
-        ? reflectionResult.text
-        : 'You showed up and put words to what you were carrying.';
-      setSessionReflection(reflection);
-      await saveSessionReflection(sessionId, reflection);
+        const reflectionResult = await generateSessionReflection(preSliders, postSliders);
+        const reflection = reflectionResult.type === 'prompt'
+          ? reflectionResult.text
+          : 'You showed up and put words to what you were carrying.';
+        setSessionReflection(reflection);
+        await saveSessionReflection(sessionId, reflection);
 
-      await completeSession(sessionId);
+        await completeSession(sessionId);
+      }
+      setIsSaving(false);
+      setStep('complete');
+    } catch (e: any) {
+      setIsSaving(false);
+      setSessionError('Failed to save session. Please try again.');
     }
-    setIsSaving(false);
-    setStep('complete');
   }
 
   function handleDone() {
@@ -361,7 +386,7 @@ export default function SessionTab() {
 
   const AudioToggle = () => (
     <TouchableOpacity style={ss.audioBtn} onPress={toggleAudio}>
-      <Text style={ss.audioIcon}>{isPlaying ? '🔊' : '🔇'}</Text>
+      <Ionicons name={isPlaying ? 'volume-high' : 'volume-mute'} size={18} color={COLORS.textSecondary} />
     </TouchableOpacity>
   );
 
@@ -424,7 +449,13 @@ export default function SessionTab() {
           ref={scrollViewRef}
           style={ss.chatScroll}
           contentContainerStyle={ss.chatContent}
+          keyboardShouldPersistTaps="handled"
         >
+          {sessionError && (
+            <View style={ss.errorBanner}>
+              <Text style={ss.errorText}>{sessionError}</Text>
+            </View>
+          )}
           {/* Show first question if conversation is empty */}
           {conversation.length === 0 && currentQ && (
             <View style={[ss.bubble, ss.bubbleAi]}>
@@ -516,8 +547,14 @@ export default function SessionTab() {
           ref={scrollViewRef}
           style={ss.chatScroll}
           contentContainerStyle={ss.chatContent}
+          keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
         >
+          {sessionError && (
+            <View style={ss.errorBanner}>
+              <Text style={ss.errorText}>{sessionError}</Text>
+            </View>
+          )}
           {/* Prompt progression dots */}
           {totalPrompts > 1 && (
             <View style={ss.promptProgressRow}>
@@ -575,7 +612,7 @@ export default function SessionTab() {
         )}
 
         {/* After final prompt: show Done button instead of input */}
-        {isLastPrompt && journalEntries.some(e => e.phase === 'journaling' && e.question === generatedPrompts[currentPromptIndex]) ? (
+        {isLastPrompt ? (
           <View style={ss.finalDoneContainer}>
             <TouchableOpacity
               style={[ss.finalDoneBtn, isSaving && { opacity: 0.5 }]}
@@ -771,6 +808,12 @@ const ss = StyleSheet.create({
   // Chat
   chatScroll: { flex: 1 },
   chatContent: { padding: SPACING.lg, paddingBottom: SPACING.xl },
+  errorBanner: {
+    backgroundColor: '#3D1F1F', borderRadius: RADIUS.md,
+    padding: SPACING.md, marginBottom: SPACING.md,
+    borderWidth: 1, borderColor: '#6B3030',
+  },
+  errorText: { fontSize: 13, color: '#E88', textAlign: 'center' },
 
   // Pinned prompt for journaling
   promptProgressRow: {

@@ -1,4 +1,6 @@
-import { View, Text, StyleSheet, ScrollView, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Linking, Platform, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS } from '../constants/theme';
 
 const RESOURCES = [
@@ -8,15 +10,22 @@ const RESOURCES = [
 ];
 
 export default function CrisisScreen() {
+  const router = useRouter();
+
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
       bounces={false}
     >
+      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <Ionicons name="arrow-back" size={20} color={COLORS.textSecondary} />
+        <Text style={styles.backBtnText}>Go back</Text>
+      </TouchableOpacity>
+
       <View style={styles.header}>
         <View style={styles.iconCircle}>
-          <Text style={styles.icon}>🤝</Text>
+          <Ionicons name="heart-circle" size={36} color={COLORS.accent} />
         </View>
         <Text style={styles.title}>You're not alone</Text>
         <Text style={styles.sub}>
@@ -66,6 +75,12 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
   },
 
+  backBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginBottom: SPACING.xl, alignSelf: 'flex-start',
+  },
+  backBtnText: { fontSize: 14, color: COLORS.textSecondary },
+
   header: { alignItems: 'center', marginBottom: SPACING.xl },
   iconCircle: {
     width: 80, height: 80, borderRadius: 40,
@@ -73,7 +88,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', marginBottom: SPACING.md,
     borderWidth: 1, borderColor: COLORS.borderAccent,
   },
-  icon: { fontSize: 40 },
   title: { fontSize: 28, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 12, textAlign: 'center' },
   sub: { fontSize: 15, color: COLORS.textSecondary, lineHeight: 23, textAlign: 'center' },
 

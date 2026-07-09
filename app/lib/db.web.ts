@@ -23,8 +23,8 @@ export async function initDb() {
   return;
 }
 
-export async function saveUserProfile(ageRange: string, role: string) {
-  webDb.profile = { id: 1, age_range: ageRange, role, session_time: '21:00' };
+export async function saveUserProfile(ageRange: string, role: string, gender: string = '') {
+  webDb.profile = { id: 1, age_range: ageRange, role, gender, session_time: '21:00' };
   persistWeb();
 }
 
