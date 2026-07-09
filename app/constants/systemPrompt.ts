@@ -16,8 +16,8 @@ export const PROGRESSIVE_QUESTIONS = [
   },
   {
     phase: 'examining',
-    question: 'Where in your body do you feel this most? What is it like there — tight, heavy, hot, hollow?',
-    instruction: 'Stay with that sensation. Write about what you find.',
+    question: '',  // Generated adaptively by AI based on Q1/Q2
+    instruction: 'Write about what comes up.',
   },
   {
     phase: 'deepening',

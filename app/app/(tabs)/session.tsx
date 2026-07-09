@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Platform, TextInput, KeyboardAvoidingView, ActivityIndicator,
-  Keyboard
+  Keyboard, PanResponder, LayoutChangeEvent
 } from 'react-native';
 import { router } from 'expo-router';
 import { Audio } from 'expo-av';
@@ -44,26 +44,47 @@ function SliderRow({
   label: string; value: number; onChange: (v: number) => void;
   color: string; low: string; high: string;
 }) {
-  const steps = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+  const trackWidth = useRef(280);
+  const startValue = useRef(value);
+
+  const clamp = (v: number) => Math.round(Math.max(0, Math.min(100, v)) / 5) * 5;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        startValue.current = value;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const pct = (gestureState.dx / trackWidth.current) * 100;
+        const newVal = clamp(startValue.current + pct);
+        onChange(newVal);
+      },
+      onPanResponderRelease: () => {},
+    })
+  ).current;
+
+  const handleTrackLayout = useCallback((e: LayoutChangeEvent) => {
+    trackWidth.current = e.nativeEvent.layout.width;
+  }, []);
+
+  const thumbLeft = `${value}%`;
+
   return (
     <View style={ss.sliderBlock}>
       <View style={ss.sliderHeader}>
         <Text style={ss.sliderLabel}>{label}</Text>
         <Text style={[ss.sliderValue, { color }]}>{value}%</Text>
       </View>
-      <View style={ss.track}>
-        <View style={[ss.fill, { width: `${value}%`, backgroundColor: color }]} />
-      </View>
-      <View style={ss.stepRow}>
-        {steps.map(s => (
-          <TouchableOpacity key={s} onPress={() => onChange(s)} style={ss.stepDot}>
-            <View style={[
-              ss.dot,
-              value >= s && { backgroundColor: color },
-              value === s && ss.dotActive,
-            ]} />
-          </TouchableOpacity>
-        ))}
+      <View style={ss.trackContainer} onLayout={handleTrackLayout}>
+        <View style={ss.track}>
+          <View style={[ss.fill, { width: thumbLeft as any, backgroundColor: color }]} />
+        </View>
+        <View
+          style={[ss.thumb, { left: thumbLeft as any, backgroundColor: color }]}
+          {...panResponder.panHandlers}
+        />
       </View>
       <View style={ss.labelRow}>
         <Text style={ss.extremeLabel}>{low}</Text>
@@ -611,35 +632,33 @@ export default function SessionTab() {
           </View>
         )}
 
-        {/* After final prompt: show Done button instead of input */}
-        {isLastPrompt ? (
-          <View style={ss.finalDoneContainer}>
+        {/* Input area — always show, with Done button on last prompt */}
+        <View style={ss.chatInputContainer}>
+          <TouchableOpacity
+            style={[ss.micBtn, isRecording && ss.micBtnActive]}
+            onPress={isRecording ? stopRecording : startRecording}
+          >
+            <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={22} color={isRecording ? '#fff' : COLORS.textSecondary} />
+          </TouchableOpacity>
+          <TextInput
+            style={ss.chatInput}
+            placeholder={isRecording ? 'Listening...' : 'Write freely here...'}
+            placeholderTextColor={COLORS.textMuted}
+            value={isRecording ? (partialResult || inputText) : inputText}
+            onChangeText={setInputText}
+            multiline
+            maxLength={2000}
+          />
+          {isLastPrompt ? (
             <TouchableOpacity
-              style={[ss.finalDoneBtn, isSaving && { opacity: 0.5 }]}
+              style={[ss.sendBtn, ss.doneSendBtn, isSaving && { opacity: 0.5 }]}
               onPress={handleJournalingDone}
               disabled={isSaving}
             >
-              <Text style={ss.finalDoneBtnText}>{isSaving ? 'Saving...' : 'Done writing'}</Text>
-              <Ionicons name="checkmark-circle" size={20} color="#fff" />
+              <Text style={ss.doneSendBtnText}>{isSaving ? '...' : 'Done'}</Text>
+              <Ionicons name="checkmark" size={18} color="#fff" />
             </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={ss.chatInputContainer}>
-            <TouchableOpacity
-              style={[ss.micBtn, isRecording && ss.micBtnActive]}
-              onPress={isRecording ? stopRecording : startRecording}
-            >
-              <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={22} color={isRecording ? '#fff' : COLORS.textSecondary} />
-            </TouchableOpacity>
-            <TextInput
-              style={ss.chatInput}
-              placeholder={isRecording ? 'Listening...' : 'Write freely here...'}
-              placeholderTextColor={COLORS.textMuted}
-              value={isRecording ? (partialResult || inputText) : inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={2000}
-            />
+          ) : (
             <TouchableOpacity
               style={[ss.sendBtn, !inputText.trim() && { opacity: 0.5 }]}
               onPress={handleJournalingSend}
@@ -647,8 +666,8 @@ export default function SessionTab() {
             >
               <Text style={ss.sendIcon}>↑</Text>
             </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </View>
       </KeyboardAvoidingView>
     );
   }
@@ -748,15 +767,22 @@ const ss = StyleSheet.create({
   sliderHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   sliderLabel: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary },
   sliderValue: { fontSize: 14, fontWeight: '700' },
+  trackContainer: {
+    height: 44, justifyContent: 'center', marginBottom: 4,
+    position: 'relative',
+  },
   track: {
     height: 6, backgroundColor: COLORS.bgCardAlt,
-    borderRadius: 3, overflow: 'hidden', marginBottom: 8,
+    borderRadius: 3, overflow: 'hidden',
   },
   fill: { height: 6, borderRadius: 3 },
-  stepRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  stepDot: { padding: 4 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.bgCardAlt },
-  dotActive: { transform: [{ scale: 1.4 }] },
+  thumb: {
+    position: 'absolute', width: 28, height: 28, borderRadius: 14,
+    top: 8, marginLeft: -14,
+    borderWidth: 3, borderColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3, shadowRadius: 4, elevation: 4,
+  },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between' },
   extremeLabel: { fontSize: 10, color: COLORS.textMuted },
 
@@ -882,6 +908,11 @@ const ss = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   sendIcon: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  doneSendBtn: {
+    width: 'auto', borderRadius: 24, paddingHorizontal: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  doneSendBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
   // Complete
   completeHeader: { alignItems: 'center', paddingVertical: SPACING.xl, marginBottom: SPACING.lg },
