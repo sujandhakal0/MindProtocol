@@ -6,9 +6,11 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Audio } from 'expo-av';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, RADIUS } from '../../constants/theme';
 import { useSessionStore, JournalEntry } from '../../stores/sessionStore';
 import { useUserStore } from '../../stores/userStore';
+import { useVoiceInput } from '../../lib/useVoiceInput';
 import {
   startSession, savePreSliders, saveDiagnosticTranscript,
   saveGeneratedPrompt, saveJournalText, saveSessionReflection,
@@ -88,6 +90,16 @@ export default function SessionTab() {
   const [isComplete, setIsComplete] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  // Voice input
+  const { isRecording, transcript, partialResult, error: voiceError, isSupported: voiceSupported, startRecording, stopRecording, cancelRecording } = useVoiceInput();
+
+  // Auto-append transcript to input when voice recognition completes
+  useEffect(() => {
+    if (transcript) {
+      setInputText(prev => prev ? `${prev} ${transcript}` : transcript);
+    }
+  }, [transcript]);
 
   // Elapsed timer
   useEffect(() => {
@@ -410,12 +422,23 @@ export default function SessionTab() {
           )}
         </ScrollView>
 
+        {voiceError && (
+          <View style={ss.voiceError}>
+            <Text style={ss.voiceErrorText}>{voiceError}</Text>
+          </View>
+        )}
         <View style={ss.chatInputContainer}>
+          <TouchableOpacity
+            style={[ss.micBtn, isRecording && ss.micBtnActive]}
+            onPress={isRecording ? stopRecording : startRecording}
+          >
+            <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={22} color={isRecording ? '#fff' : COLORS.textSecondary} />
+          </TouchableOpacity>
           <TextInput
             style={ss.chatInput}
-            placeholder="Write freely here..."
+            placeholder={isRecording ? 'Listening...' : 'Write freely here...'}
             placeholderTextColor={COLORS.textMuted}
-            value={inputText}
+            value={isRecording ? (partialResult || inputText) : inputText}
             onChangeText={setInputText}
             multiline
             maxLength={2000}
@@ -486,12 +509,23 @@ export default function SessionTab() {
           )}
         </ScrollView>
 
+        {voiceError && (
+          <View style={ss.voiceError}>
+            <Text style={ss.voiceErrorText}>{voiceError}</Text>
+          </View>
+        )}
         <View style={ss.chatInputContainer}>
+          <TouchableOpacity
+            style={[ss.micBtn, isRecording && ss.micBtnActive]}
+            onPress={isRecording ? stopRecording : startRecording}
+          >
+            <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={22} color={isRecording ? '#fff' : COLORS.textSecondary} />
+          </TouchableOpacity>
           <TextInput
             style={ss.chatInput}
-            placeholder="Keep writing..."
+            placeholder={isRecording ? 'Listening...' : 'Keep writing...'}
             placeholderTextColor={COLORS.textMuted}
-            value={inputText}
+            value={isRecording ? (partialResult || inputText) : inputText}
             onChangeText={setInputText}
             multiline
             maxLength={2000}
@@ -672,6 +706,18 @@ const ss = StyleSheet.create({
     flexDirection: 'row', padding: SPACING.sm, paddingHorizontal: SPACING.md,
     backgroundColor: COLORS.bgCard, borderTopWidth: 1, borderTopColor: COLORS.border,
     alignItems: 'flex-end', gap: SPACING.sm,
+  },
+  voiceError: {
+    backgroundColor: COLORS.bgCardAlt, paddingHorizontal: SPACING.md, paddingVertical: 6,
+    borderTopWidth: 1, borderTopColor: COLORS.border,
+  },
+  voiceErrorText: { fontSize: 11, color: COLORS.danger },
+  micBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: COLORS.bgCardAlt, alignItems: 'center', justifyContent: 'center',
+  },
+  micBtnActive: {
+    backgroundColor: COLORS.danger,
   },
   chatInput: {
     flex: 1, backgroundColor: COLORS.bgInput, borderRadius: 20,

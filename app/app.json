@@ -39,9 +39,10 @@
       [
         "expo-av",
         {
-          "microphonePermission": false
+          "microphonePermission": "MindProtocol needs microphone access for voice journaling."
         }
-      ]
+      ],
+      "@react-native-voice/voice"
     ],
     "experiments": {
       "typedRoutes": true
