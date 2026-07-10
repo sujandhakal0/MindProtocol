@@ -4,17 +4,16 @@
     "slug": "mindprotocol",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/icon.png",
     "scheme": "mindprotocol",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.mindprotocol.app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#0A0A12"
       },
       "package": "com.mindprotocol.app"
@@ -22,7 +21,7 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
@@ -31,8 +30,8 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
-          "color": "#7C5CFC",
+          "icon": "./assets/icon.png",
+          "color": "#4A9B8E",
           "sounds": []
         }
       ],
@@ -42,7 +41,8 @@
           "microphonePermission": "MindProtocol needs microphone access for voice journaling."
         }
       ],
-      "@react-native-voice/voice"
+      "@react-native-voice/voice",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

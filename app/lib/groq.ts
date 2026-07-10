@@ -220,8 +220,9 @@ function parsePromptsArray(text: string): string[] {
       return parsed.filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
     }
   } catch {
-    // Try to extract JSON array from markdown code block
-    const jsonMatch = text.match(/\[[\s\S]*?\]/);
+    // Try to extract JSON array from markdown code block or raw text
+    // Use greedy match to capture the FULL array including nested brackets
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       try {
         const parsed = JSON.parse(jsonMatch[0]);
