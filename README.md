@@ -2,7 +2,7 @@
 
 A daily 15-minute mental-reset journaling app for college students and early-career professionals. Guided AI-powered sessions help you check in with yourself, name what you're feeling, and leave with a small shift.
 
-Built for a 2026 hackathon. Designed with trauma-informed UX principles. Private by default — all data stays on your device.
+**2nd Runner-Up at HackFusion 2026.** Designed with trauma-informed UX principles. Private by default — all data stays on your device.
 
 ## Features
 
